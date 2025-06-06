@@ -22,6 +22,7 @@ function LocationClass:new(name, xPos, yPos)
   location.size = Vector(160, 224) -- size of one side
   location.position = Vector(xPos, yPos)
   location.currentWinner = 0
+  location.first = nil
   
   location.side1pos = Vector(xPos - 5, yPos - 5 + 270)
   location.side1cards = {}
@@ -127,15 +128,15 @@ end
 
 function LocationClass:revealCards(winningPlayer, manager) -- flips every card in the queue + use on reveal abilities
   if winningPlayer ~= nil then
-    first = winningPlayer
+    self.first = winningPlayer
   else
-    first = math.random(1, 2) -- currently reproducible
+    self.first = math.random(1, 2) -- currently reproducible
   end
   
-  if first == 1 then
+  if self.first == 1 then
     self:revealSide1(manager)
     self:revealSide2(manager)
-  elseif first == 2 then
+  elseif self.first == 2 then
     self:revealSide2(manager)
     self:revealSide1(manager)
   end

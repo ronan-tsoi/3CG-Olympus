@@ -1,4 +1,5 @@
 require "card"
+require "hand"
 
 -- subclass sandbox for cards
 
@@ -209,7 +210,7 @@ function CardClass:ability(manager)
       end
     end
 
-  elseif self.name == "Ship of Theseus" then -- add a copy with +1 power to player hand
+  elseif self.name == "Ship of" then -- add a copy with +1 power to player hand
     if self.side == 1 then
       manager.playerHand:addCard(ShipOfTheseus:new(self.power + 1))
     else

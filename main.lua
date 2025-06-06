@@ -10,13 +10,13 @@ io.stdout:setvbuf("no")
 require "grabber"
 require "gameManager"
 
-manager = GameManager:new(nil, nil, 25)
-grabber = GrabberClass:new()
-
 function love.load()
   love.window.setTitle("3CG Olympus")
   love.window.setMode(1080, 780)
   love.graphics.setBackgroundColor(0.4, 0.6, 0.8, 1)
+
+  manager = GameManager:new(nil, nil, 25)
+  grabber = GrabberClass:new()
 end
 
 function love.update()
