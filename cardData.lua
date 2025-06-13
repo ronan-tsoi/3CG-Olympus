@@ -478,7 +478,6 @@ elseif self.name == "Ship of\nTheseus" then -- add a copy with +1 power to playe
       manager.playerHand:addCard(manager.cpuDeck)
     else
       manager.cpuHand:addCard(manager.playerDeck)
-      manager.cpuHand.cards[#manager.cpuDeck.cards].isFaceUp = false
     end
   elseif self.name == "Hera" then -- +1 power for cards in own hand
     if self.side == 1 then
