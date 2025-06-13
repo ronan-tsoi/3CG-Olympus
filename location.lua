@@ -84,6 +84,13 @@ function LocationClass:evaluateDropInput(source, manager, side)
       local colOffset = ( (#self.side1cards > 2) and 1 or 0 ) * 117
       topCard:setPosition(self.side1pos.x + rowOffset + 5, self.side1pos.y + colOffset + 5)
     end
+    for _, card in ipairs(self.side2cards) do
+      card:abilityOnCardPlay(manager, topCard)
+    end
+    for _, card in ipairs(self.side1cards) do
+      card:abilityOnCardPlay(manager, topCard)
+    end
+    
     manager.playerMana = manager.playerMana - topCard.cost
     return 1
   
@@ -91,23 +98,73 @@ function LocationClass:evaluateDropInput(source, manager, side)
     if #self.side2cards == LOCATION_MAX then return 0 end -- location is full
     
     for index, card in ipairs(source.cards) do
-      if card.cost > manager.cpuMana then break end -- not enough mana
+      local canPlay = true
+      if card.cost > manager.cpuMana then canPlay = false end -- not enough mana
       
-      table.insert(self.side2cards, card)
-      card.currentLocation = self
-      if self.position ~= nil then
-        local rowOffset = ( (#self.side2cards + 1) % 2 ) * 85
-        local colOffset = ( (#self.side2cards > 2) and 1 or 0 ) * 117
+      if canPlay == true then
+        table.insert(self.side2cards, card)
+        card.currentLocation = self
+        if self.position ~= nil then
+          local rowOffset = ( (#self.side2cards + 1) % 2 ) * 85
+          local colOffset = ( (#self.side2cards > 2) and 1 or 0 ) * 117
+        end
+        manager.cpuMana = manager.cpuMana - card.cost
+        
+        for _, otherCard in ipairs(self.side2cards) do
+          otherCard:abilityOnCardPlay(manager, card)
+        end
+        for _, otherCard in ipairs(self.side1cards) do
+          otherCard:abilityOnCardPlay(manager, card)
+        end
+        
+        table.remove(source.cards, index)
       end
-      manager.cpuMana = manager.cpuMana - card.cost
-      
-      table.remove(source.cards, index)
-      break
     end
     
     for index, card in ipairs(source.cards) do
             card.position.x = source.position.x + (OFFSET * (index-1))
           end
+    
+    return 1
+  end
+end
+
+function LocationClass:moveCard(card, manager, side)
+  if side == SIDE.PLAYER then
+    if #self.side1cards == LOCATION_MAX then return 0 end -- location is full
+
+    table.insert(self.side1cards, card)
+    card.currentLocation = self
+    if self.position ~= nil then
+      local rowOffset = ( (#self.side1cards + 1) % 2 ) * 85
+      local colOffset = ( (#self.side1cards > 2) and 1 or 0 ) * 117
+      card:setPosition(self.side1pos.x + rowOffset + 5, self.side1pos.y + colOffset + 5)
+    end
+    for _, otherCard in ipairs(self.side2cards) do
+      otherCard:abilityOnCardPlay(manager, card)
+    end
+    for _, otherCard in ipairs(self.side1cards) do
+      otherCard:abilityOnCardPlay(manager, card)
+    end
+    
+    return 1
+  
+  elseif side == SIDE.CPU then 
+    if #self.side2cards == LOCATION_MAX then return 0 end -- location is full
+
+    table.insert(self.side2cards, card)
+    card.currentLocation = self
+    if self.position ~= nil then
+      local rowOffset = ( (#self.side2cards + 1) % 2 ) * 85
+      local colOffset = ( (#self.side2cards > 2) and 1 or 0 ) * 117
+      card:setPosition(self.side2pos.x + rowOffset + 5, self.side2pos.y + colOffset + 5)
+    end
+    for _, otherCard in ipairs(self.side2cards) do
+      otherCard:abilityOnCardPlay(manager, card)
+    end
+    for _, otherCard in ipairs(self.side1cards) do
+      otherCard:abilityOnCardPlay(manager, card)
+    end
     
     return 1
   end
@@ -127,7 +184,7 @@ function LocationClass:refreshCardPos()
 end
 
 function LocationClass:revealCards(winningPlayer, manager) -- flips every card in the queue + use on reveal abilities
-  if winningPlayer ~= nil then
+  if winningPlayer ~= 3 then
     self.first = winningPlayer
   else
     self.first = math.random(1, 2) -- currently reproducible
@@ -147,7 +204,7 @@ function LocationClass:revealSide1(manager)
       card.side = 1
       if card.isFaceUp == false then
         card:flip()
-        card:ability(manager)
+        card:abilityOnReveal(manager)
       end
     end
   end
@@ -158,7 +215,7 @@ function LocationClass:revealSide2(manager)
       card.side = 2
       if card.isFaceUp == false then
         card:flip()
-        card:ability(manager)
+        card:abilityOnReveal(manager)
       end
     end
   end

@@ -65,7 +65,4 @@ function GrabberClass:draw()
   for _, card in ipairs(self.cards) do
     card:draw()
   end
-  -- DEBUG
-  --[[ love.graphics.print(
-    "holding " .. tostring(#self.cards) .. "\n" .. "state " .. tostring(self.state), self.currentMousePos.x + 50, self.currentMousePos.y - 50) ]]--
 end

@@ -43,19 +43,13 @@ function CardClass:draw()
   if self.isFaceUp then
     love.graphics.print(self.cost, self.position.x + 10, self.position.y + 10)
     love.graphics.print(self.power, self.position.x + 60, self.position.y + 10)
-    love.graphics.print(self.name, self.position.x + 2, self.position.y + 25)
-    love.graphics.print(self.description, self.position.x + 2, self.position.y + 40)
+    love.graphics.print(self.name, self.position.x + 2, self.position.y + 40)
   else
     love.graphics.print('+', self.position.x + 35, self.position.y + 48)
   end
 
   love.graphics.rectangle("line", self.position.x - 1, self.position.y - 1, self.size.x + 2, self.size.y + 2, 6, 6)
   
-  -- DEBUG
-  --[[ love.graphics.print(
-    tostring(self.state),
-    self.position.x + 20, self.position.y - 20
-    ) ]]--
 end
 
 function CardClass:addPower(value)
@@ -81,7 +75,6 @@ function CardClass:flip()
 end
 
 function CardClass:discard(manager)
-  print("test")
   local i = 1
   for ind, card in ipairs(self.currentLocation) do
     if card == self then
@@ -89,8 +82,26 @@ function CardClass:discard(manager)
       break
     end
   end
-  table.remove(self.currentLocation.side1cards, i)
-  table.insert(manager.playerDiscard, self)
+  
+  if self.side == 1 then
+    if self.currentLocation == manager.playerHand.cards then
+      table.remove(self.currentLocation, i)
+    else
+      table.remove(self.currentLocation.side1cards, i)
+      self.currentLocation:refreshCardPos()
+    end
+    table.insert(manager.playerDiscard, self)
+  else
+    if self.currentLocation == manager.cpuHand.cards then
+      table.remove(self.currentLocation, i)
+    else
+      table.remove(self.currentLocation.side2cards, i)
+      self.currentLocation:refreshCardPos()
+    end
+    table.insert(manager.cpuDiscard, self)
+  end
+  self:abilityOnDiscard(manager)
+
 end
 
 function CardClass:checkForMouseOver(grabber)  

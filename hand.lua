@@ -1,4 +1,5 @@
 require "vector"
+require "reader"
 
 HandClass = {} 
 
@@ -6,7 +7,7 @@ BLACK = {0, 0, 0, 1}
 
 OFFSET = 85
 
-function HandClass:new(xPos, yPos)
+function HandClass:new(xPos, yPos, side)
   local hand = {}
   local metadata = {__index = HandClass}
   setmetatable(hand, metadata)
@@ -15,6 +16,9 @@ function HandClass:new(xPos, yPos)
   hand.position = Vector(xPos, yPos)
   hand.cards = {}
   hand.isMouseOver = false
+  hand.side = side
+  
+  hand.reader = ReaderClass:new(50, 500)
   
   return hand
 end
@@ -26,23 +30,29 @@ function HandClass:draw()
   for _, card in ipairs(self.cards) do
     card:draw()
   end
+  
+  self.reader:draw()
 
 end
 
 
 function HandClass:addCard(source)
-  if self.cards ~= nil then
+  if self.cards ~= nil and #source > 0 then
     if #self.cards < 7 then
       local topCard = table.remove(source)
       table.insert(self.cards, topCard)
       topCard:setPosition(self.position.x + (OFFSET * (#self.cards-1)), self.position.y)
+      topCard.currentLocation = self.cards
+      topCard.side = self.side
     else
       return 0 -- could not add card: hand is full
     end
-  else
+  elseif #source > 0 then
     local topCard = table.remove(source)
     self.cards = {topCard}
     topCard:setPosition(self.position.x + (OFFSET * (#self.cards-1)), self.position.y)
+    topCard.currentLocation = self.cards
+    topCard.side = self.side
   end
   return 1
 end
@@ -80,7 +90,15 @@ function HandClass:evaluateDragInput(grabber)
       end
         
     end
-  else
+  elseif grabber.state ~= 1 and #grabber.cards == 0 and #self.cards ~= 0 and self.isMouseOver then
+    local cursorInd = math.floor((grabber.currentMousePos.x - self.position.x) / OFFSET) + 1
+    if self.cards[cursorInd] ~= nil then
+      --print(self.cards[cursorInd].name)
+      self.reader:set(self.cards[cursorInd])
+    else
+      self.reader:set(nil)
+    end
+    
   end
 end
 

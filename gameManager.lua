@@ -1,6 +1,7 @@
 require "location"
 require "hand"
 require "deckLoader"
+require "deckPicker"
 require "button"
 
 GameManager = {}
@@ -22,7 +23,7 @@ SIDE = {
 -- singleton 
 -- initialize game -- 3 locations, fresh decks for players
 
-function GameManager:new(player1, player2, goalScore)
+function GameManager:new(goalScore)
   local manager = {}
   local metadata = {__index = GameManager}
   setmetatable(manager, metadata)
@@ -30,14 +31,14 @@ function GameManager:new(player1, player2, goalScore)
   
   manager.goalScore = goalScore
   manager.roundNum = 1
-  manager.winningPlayer = nil
+  manager.winningPlayer = SIDE.TIE
   manager.winner = nil
   
   manager.deckLoader = DeckLoaderClass:new()
   
   -- Player
-  manager.playerDeck = manager.deckLoader:loadDefaultDeck()
-  manager.playerHand = HandClass:new(240, 660)
+  manager.playerDeck = PLAYER_DECK
+  manager.playerHand = HandClass:new(240, 660, 1)
   manager.playerDiscard = {}
   manager.playerPoints = 0
   manager.playerMana = 1
@@ -47,9 +48,8 @@ function GameManager:new(player1, player2, goalScore)
   end
   
   -- CPU
-  math.randomseed(os.time())
-  manager.cpuDeck = manager.deckLoader:loadDefaultDeck()
-  manager.cpuHand = HandClass:new(240, 10)
+  manager.cpuDeck = CPU_DECK
+  manager.cpuHand = HandClass:new(240, 10, 2)
   manager.cpuDiscard = {}
   manager.cpuPoints = 0
   manager.cpuMana = 1
@@ -65,13 +65,9 @@ function GameManager:new(player1, player2, goalScore)
   table.insert(manager.locations, LocationClass:new("SPARTA", 700, 140))
   
   -- buttons
-  manager.submitButton = SubmitButton:new()
-  manager.restartButton = RestartButton:new()
-  
-  manager.cpuFlag = 0
-  manager.revealFlag = 0
-  manager.scoringFlag = 0
-  manager.completionFlag = 0
+  manager.submit = SubmitButton:new()
+  manager.restart = RestartButton:new()
+  manager.picker = PickerButton:new()
   
   return manager
 end
@@ -102,17 +98,20 @@ function GameManager:draw()
     end
   end
   
-  self.submitButton:draw()
-  self.restartButton:draw()
+  self.submit:draw()
+  if self.state == GAME_STATE.COMPLETE then
+    self.restart:draw()
+    self.picker:draw()
+  end
 end
 
-function GameManager:stateHandler(grabber)
+function GameManager:update(grabber)
   if self.state == GAME_STATE.STANDBY then
     -- respond to player input: dragging cards deck -> locations -> add to queue for revealing cards
     -- state is set to playing when player presses submit
     
     self.playerHand:checkForMouseOver(grabber)
-    self.submitButton:checkForMouseOver(manager)
+    self.submit:checkForMouseOver(self)
     for _, loc in ipairs(self.locations) do
       loc:checkForMouseOver(grabber, self)
     end
@@ -122,33 +121,8 @@ function GameManager:stateHandler(grabber)
     --    reveal cards -> play On Reveal abilities
     --    calculate points at locations -> sum to player point count -> update winning player
     --    check for game completion requirement- if players have reached goalScore
-    
+
     self.cpuFlag = self:cpuBehavior()
-    
-    if self.cpuFlag == 1 then
-      self.cpuFlag = 0
-      self.revealFlag = self:revealCards()
-    end
-    
-    if self.revealFlag == 1 then
-      self.revealFlag = 0
-      self.scoringFlag = self:checkScores()
-    end
-    
-    if self.scoringFlag == 1 then
-      self.scoringFlag = 0
-      self.completionFlag = self:checkGameCompletion()
-    end
-    
-    if self.completionFlag == 1 then
-      self.completionFlag = 0
-      if self.winner == nil then
-        self.state = GAME_STATE.NEW_TURN
-      else
-        self.restartButton:setPosition(20, 720)
-        self.state = GAME_STATE.COMPLETE
-      end
-    end
     
   elseif self.state == GAME_STATE.NEW_TURN then
     -- initialize new turn- increase mana +1, draw cards from decks
@@ -158,15 +132,16 @@ function GameManager:stateHandler(grabber)
     self.cpuMana = self.roundNum
     
     -- draw cards from decks
-    self.playerHand:addCard(manager.playerDeck)
+    self.playerHand:addCard(self.playerDeck)
     
-    self.cpuHand:addCard(manager.cpuDeck)
-    self.cpuHand.cards[#manager.cpuHand.cards].isFaceUp = false
+    self.cpuHand:addCard(self.cpuDeck)
+    self.cpuHand.cards[#self.cpuHand.cards].isFaceUp = false
     
     self.state = GAME_STATE.STANDBY
     
   elseif self.state == GAME_STATE.COMPLETE then
-    self.restartButton:checkForMouseOver(manager)
+    self.restart:checkForMouseOver(self)
+    self.picker:checkForMouseOver(self)
     return
   end
 end
@@ -177,7 +152,8 @@ function GameManager:cpuBehavior()
       math.randomseed(os.time())
       self.locations[math.random(1, 3)]:evaluateDropInput(self.cpuHand, self, 2)
     end
-    return 1
+    
+    self:revealCards()
 end
 
 function GameManager:revealCards()
@@ -194,7 +170,18 @@ function GameManager:revealCards()
       end
       loc:allFaceUp()
     end
-    return 1
+
+    
+    for _, loc in ipairs(self.locations) do
+        for _, card in ipairs(loc.side1cards) do
+          card:abilityEndOfTurn(self)
+        end
+        for _, card in ipairs(loc.side2cards) do
+          card:abilityEndOfTurn(self)
+        end
+      end
+
+    self:checkScores()
 end
 
 function GameManager:checkScores()
@@ -204,18 +191,19 @@ function GameManager:checkScores()
     elseif self.cpuPoints > self.playerPoints then
       self.winningPlayer = SIDE.CPU
     else
-      self.winningPlayer = 0
+      self.winningPlayer = 3
     end
-    return 1
+
+    self:checkGameCompletion()
 end
 
 function GameManager:checkGameCompletion()
   -- check game completion
-    if self.playerPoints >= manager.goalScore and self.cpuPoints < manager.goalScore then -- player reaches goal first
+    if self.playerPoints >= self.goalScore and self.cpuPoints < self.goalScore then -- player reaches goal first
       self.winner = SIDE.PLAYER
-    elseif self.playerPoints < manager.goalScore and self.cpuPoints >= manager.goalScore then -- cpu reaches goal first
+    elseif self.playerPoints < self.goalScore and self.cpuPoints >= self.goalScore then -- cpu reaches goal first
       self.winner = SIDE.CPU 
-    elseif self.playerPoints >= manager.goalScore and self.cpuPoints >= manager.goalScore then -- both sides reach the goal on the same round
+    elseif self.playerPoints >= self.goalScore and self.cpuPoints >= self.goalScore then -- both sides reach the goal on the same round
       if self.playerPoints > self.cpuPoints then
         self.winner = SIDE.PLAYER
       elseif self.playerPoints < self.cpuPoints then
@@ -224,7 +212,14 @@ function GameManager:checkGameCompletion()
         self.winner = SIDE.TIE 
       end
     end
-    return 1
+    
+    if self.winner == nil then
+        self.state = GAME_STATE.NEW_TURN
+    else
+        self.restart:setPosition(20, 20)
+        self.picker:setPosition(20, 75)
+        self.state = GAME_STATE.COMPLETE
+    end
 end
 
 function GameManager:toPlaying()
