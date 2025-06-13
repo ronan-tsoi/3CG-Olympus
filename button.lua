@@ -145,6 +145,7 @@ function RestartButton:click(manager)
   self:setPosition(20, 800)
   SCENE_ID = 4
   table.remove(SCENES, 4)
+  SCENES[3]:setDecks()
   table.insert(SCENES, GameManager:new(25))
 end
 

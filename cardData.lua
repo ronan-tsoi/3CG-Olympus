@@ -463,7 +463,7 @@ elseif self.name == "Ship of\nTheseus" then -- add a copy with +1 power to playe
       end
       lowest:discard(manager)
     else
-      local lowest = math.random(1, #manager.cpuHand.cards)
+      local lowest = manager.cpuHand.cards[math.random(1, #manager.cpuHand.cards)]
       
       for _, card in ipairs(manager.cpuHand.cards) do
         if card.power < lowest.power then
@@ -471,6 +471,9 @@ elseif self.name == "Ship of\nTheseus" then -- add a copy with +1 power to playe
         end
       end
       lowest:discard(manager)
+      for index, card in ipairs(manager.cpuHand.cards) do
+        card.position.x = manager.cpuHand.position.x + (OFFSET * (index-1))
+      end
     end
     
   elseif self.name == "Prometheus" then -- draw from opposing deck

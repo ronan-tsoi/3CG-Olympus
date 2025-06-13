@@ -93,7 +93,6 @@ function HandClass:evaluateDragInput(grabber)
   elseif grabber.state ~= 1 and #grabber.cards == 0 and #self.cards ~= 0 and self.isMouseOver then
     local cursorInd = math.floor((grabber.currentMousePos.x - self.position.x) / OFFSET) + 1
     if self.cards[cursorInd] ~= nil then
-      --print(self.cards[cursorInd].name)
       self.reader:set(self.cards[cursorInd])
     else
       self.reader:set(nil)
